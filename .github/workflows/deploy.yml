@@ -33,5 +33,5 @@ jobs:
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           resourceGroupName: rg-ulaudit-dev
-          template: ./main.bicep
+          template: ./Infrastructure/main.bicep
           parameters: location=southeastasia environmentName=dev appName=ulauditpipeline
