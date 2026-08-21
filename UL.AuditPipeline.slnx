@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Infrastructure/main.bicep" />
+  </Folder>
+  <Project Path="UL.AuditPipeline.Api/UL.AuditPipeline.Api.csproj" />
+  <Project Path="UL.AuditPipeline.Worker/UL.AuditPipeline.Worker.csproj" />
+</Solution>
