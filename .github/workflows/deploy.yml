@@ -26,12 +26,12 @@ jobs:
 
       - name: Create Resource Group
         run: |
-          az group create --name rg-ulaudit-dev --location southeastasia
+          az group create --name rg-ulauditpipeline-dev --location southeastasia
 
       - name: Deploy Bicep File
         uses: azure/arm-deploy@v2
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          resourceGroupName: rg-ulaudit-dev
+          resourceGroupName: rg-ulauditpipeline-dev
           template: ./Infrastructure/main.bicep
           parameters: location=southeastasia environmentName=dev appName=ulauditpipeline
