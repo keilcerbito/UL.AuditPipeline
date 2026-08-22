@@ -5,5 +5,6 @@
   </Folder>
   <Project Path="UL.AuditPipeline.Api/UL.AuditPipeline.Api.csproj" />
   <Project Path="UL.AuditPipeline.Core/UL.AuditPipeline.Core.csproj" Id="676998d7-f581-4191-9097-be33f66407f0" />
+  <Project Path="UL.AuditPipeline.Tests/UL.AuditPipeline.Tests.csproj" Id="8fc5ffe9-b47e-4e07-b66c-5f711125ccc6" />
   <Project Path="UL.AuditPipeline.Worker/UL.AuditPipeline.Worker.csproj" />
 </Solution>
