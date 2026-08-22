@@ -28,6 +28,7 @@ jobs:
         run: |
           az group create --name rg-ulauditpipeline-dev --location southeastasia
 
+      # Infrastructure as Code Deployment
       - name: Deploy Bicep File
         uses: azure/arm-deploy@v2
         with:
@@ -35,3 +36,21 @@ jobs:
           resourceGroupName: rg-ulauditpipeline-dev
           template: ./Infrastructure/main.bicep
           parameters: location=southeastasia environmentName=dev appName=ulauditpipeline
+
+      # Build and Deploy .NET Application
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      # Compile and Publish the Web API
+      - name: Build and Publish API
+        run: dotnet publish ./UL.AuditPipeline.Api/UL.AuditPipeline.Api.csproj -c Release -o ./publish-api
+
+      # Deploy the Web API to Azure App Service
+      - name: Deploy API to Azure App Service
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ulauditpipeline-dev
+          publish-profile: ulauditpipeline-api-dev
+          package: ./publish-api

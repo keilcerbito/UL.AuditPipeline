@@ -3,7 +3,7 @@ param location string = resourceGroup().location
 param environmentName string = 'dev'
 param appName string = 'ulauditpipeline'
 
-// Define the Cosmos DB Account (NoSQL)
+// Define the Cosmos DB Account (The database for API)
 resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   name: '${appName}-cosmos-${environmentName}'
   location: location
@@ -35,7 +35,7 @@ resource webApiApp 'Microsoft.Web/sites@2022-09-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     siteConfig: {
-      netFrameworkVersion: 'v8.0' // Aligning with modern .NET
+      netFrameworkVersion: 'v8.0'
     }
   }
 }

@@ -4,11 +4,11 @@ using UL.AuditPipeline.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Register CosmosClient as a singleton service
 builder.Services.AddSingleton<CosmosClient>(sp =>
 {
     var connectionString = builder.Configuration.GetConnectionString("CosmosDb");
@@ -23,6 +23,17 @@ builder.Services.AddSingleton<CosmosClient>(sp =>
     return new CosmosClient(connectionString, clientOptions);
 });
 
+// Add CORS policy to allow requests from the web app
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowWebApp", policy =>
+    {
+        policy.AllowAnyOrigin() // In production, replace with acctual web app URL
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 
 var app = builder.Build();
@@ -35,6 +46,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Enable CORS for the web app
+app.UseCors("AllowWebApp");
 
 app.UseAuthorization();
 

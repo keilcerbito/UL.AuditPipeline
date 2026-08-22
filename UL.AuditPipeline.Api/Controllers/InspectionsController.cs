@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
+using System.Net.NetworkInformation;
 using UL.AuditPipeline.Api.Services;
 using UL.AuditPipeline.Core.Models;
 using UL.AuditPipeline.Shared.Models;
@@ -52,12 +54,28 @@ namespace UL.AuditPipeline.Api.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public async Task<IActionResult> GetAllInspections()
+        public async Task<IActionResult> GetInspections([FromQuery] string? status)
         {
             var container = _cosmosClient.GetContainer("AuditDB", "Inspections");
-            var query = new QueryDefinition("SELECT * FROM c ORDER BY c.processedAtUtc DESC");
 
-            using var iterator = container.GetItemQueryIterator<InspectionRecord>(query);
+            //var query = new QueryDefinition("SELECT * FROM c ORDER BY c.processedAtUtc DESC");
+            //using var iterator = container.GetItemQueryIterator<InspectionRecord>(query);
+            //var results = new List<InspectionRecord>();
+
+            // Use LINQ to query the container for InspectionRecord items
+            IQueryable<InspectionRecord> queryable = container.GetItemLinqQueryable<InspectionRecord>();
+
+            // Apply filtering based on the PassFailStatus if provided
+            if (!string.IsNullOrEmpty(status))
+            {
+                queryable = queryable.Where(record => record.PassFailStatus == status);
+            }
+
+            // Order the results by ProcessedAtUtc in descending order
+            queryable = queryable.OrderByDescending(record => record.ProcessedAtUtc);
+
+            // Use a FeedIterator to retrieve the results in pages
+            using FeedIterator<InspectionRecord> iterator = queryable.ToFeedIterator();
             var results = new List<InspectionRecord>();
 
             while (iterator.HasMoreResults)
