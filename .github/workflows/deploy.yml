@@ -49,8 +49,7 @@ jobs:
 
       # Deploy the Web API to Azure App Service
       - name: Deploy API to Azure App Service
-        uses: azure/webapps-deploy@v2
+        uses: azure/webapps-deploy@v3
         with:
           app-name: ulauditpipeline-dev
-          publish-profile: ulauditpipeline-api-dev
           package: ./publish-api
