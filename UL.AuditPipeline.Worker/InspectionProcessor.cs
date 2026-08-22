@@ -4,7 +4,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using UL.AuditPipeline.Worker.Models;
+using UL.AuditPipeline.Core.Models;
 
 namespace UL.AuditPipeline.Worker;
 

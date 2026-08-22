@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using UL.AuditPipeline.Api.Services;
+using UL.AuditPipeline.Core.Models;
+using UL.AuditPipeline.Shared.Models;
 
 namespace UL.AuditPipeline.Api.Controllers
 {
@@ -8,12 +11,19 @@ namespace UL.AuditPipeline.Api.Controllers
     public class InspectionsController : ControllerBase
     {
         private readonly IBlobStorageService _storageService;
+        private readonly CosmosClient _cosmosClient;
 
-        public InspectionsController(IBlobStorageService storageService)
+        public InspectionsController(IBlobStorageService storageService, CosmosClient cosmosClient)
         {
             _storageService = storageService;
+            _cosmosClient = cosmosClient;
         }
 
+        /// <summary>
+        /// Uploads an inspection file to Blob Storage and enqueues a message for background processing.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<IActionResult> UploadInspection(IFormFile file)
         {
@@ -35,6 +45,137 @@ namespace UL.AuditPipeline.Api.Controllers
 
             // Return 202 Accepted immediately
             return Accepted(new { trackingId = inspectionId, status = "Processing in background" });
+        }
+
+        /// <summary>
+        /// Retrieves all inspection records from Cosmos DB, ordered by processedAtUtc in descending order.
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        public async Task<IActionResult> GetAllInspections()
+        {
+            var container = _cosmosClient.GetContainer("AuditDB", "Inspections");
+            var query = new QueryDefinition("SELECT * FROM c ORDER BY c.processedAtUtc DESC");
+
+            using var iterator = container.GetItemQueryIterator<InspectionRecord>(query);
+            var results = new List<InspectionRecord>();
+
+            while (iterator.HasMoreResults)
+            {
+                var response = await iterator.ReadNextAsync();
+                results.AddRange(response);
+            }
+
+            return Ok(results);
+        }
+
+        /// <summary>
+        /// Retrieves a specific inspection record by its ID and partition key (inspectorId) from Cosmos DB.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="inspectorId"></param>
+        /// <returns></returns>
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetInspectionById(string id, [FromQuery] string inspectorId)
+        {
+            if (string.IsNullOrEmpty(inspectorId))
+            {
+                return BadRequest(new { error = "The 'inspectorId' query parameter is required as the partition key." });
+            }
+
+            try
+            {
+                var container = _cosmosClient.GetContainer("AuditDB", "Inspections");
+
+                // A point read requires both the Document ID and the Partition Key value
+                ItemResponse<InspectionRecord> response = await container.ReadItemAsync<InspectionRecord>(
+                    id: id,
+                    partitionKey: new PartitionKey(inspectorId)
+                );
+
+                return Ok(response.Resource);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return NotFound(new { error = "Inspection record not found." });
+            }
+        }
+
+        /// <summary>
+        /// Updates an existing inspection record in Cosmos DB. The record is identified by its ID and partition key (inspectorId). 
+        /// Only the PassFailStatus and Comments fields can be updated.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="inspectorId"></param>
+        /// <param name="updateDto"></param>
+        /// <returns></returns>
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateInspection(string id, [FromQuery] string inspectorId, [FromBody] UpdateInspectionDto updateDto)
+        {
+            if (string.IsNullOrEmpty(inspectorId))
+            {
+                return BadRequest(new { error = "The 'inspectorId' query parameter is required as the partition key." });
+            }
+
+            var container = _cosmosClient.GetContainer("AuditDB", "Inspections");
+
+            try
+            {
+                // Read the existing item from Cosmos DB
+                ItemResponse<InspectionRecord> existingItem = await container.ReadItemAsync<InspectionRecord>(
+                    id: id,
+                    partitionKey: new PartitionKey(inspectorId)
+                );
+
+                var itemToUpdate = existingItem.Resource;
+                itemToUpdate.PassFailStatus = updateDto.PassFailStatus;
+                itemToUpdate.Comments = updateDto.Comments;
+
+                // Replace the item in Cosmos DB
+                ItemResponse<InspectionRecord> response = await container.ReplaceItemAsync(
+                    item: itemToUpdate,
+                    id: id,
+                    partitionKey: new PartitionKey(inspectorId)
+                );
+
+                return Ok(response.Resource);
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return NotFound(new { error = "Inspection record not found." });
+            }
+        }
+
+        /// <summary>
+        /// Deletes an inspection record from Cosmos DB. The record is identified by its ID and partition key (inspectorId).
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="inspectorId"></param>
+        /// <returns></returns>
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteInspection(string id, [FromQuery] string inspectorId)
+        {
+            if (string.IsNullOrEmpty(inspectorId))
+            {
+                return BadRequest(new { error = "The 'inspectorId' query parameter is required as the partition key." });
+            }
+
+            var container = _cosmosClient.GetContainer("AuditDB", "Inspections");
+
+            try
+            {
+                // Delete the item from Cosmos DB using the provided ID and partition key
+                await container.DeleteItemAsync<InspectionRecord>(
+                    id: id,
+                    partitionKey: new PartitionKey(inspectorId)
+                );
+
+                return NoContent(); // HTTP 204
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return NotFound(new { error = "Inspection record not found." });
+            }
         }
     }
 }

@@ -18,7 +18,6 @@ builder.Services
 builder.Services.AddSingleton<CosmosClient>(sp =>
 {
     var connectionString = Environment.GetEnvironmentVariable("CosmosDbConnectionString");
-    
     var clientOptions = new CosmosClientOptions
     {
         HttpClientFactory = () => new HttpClient(new HttpClientHandler
