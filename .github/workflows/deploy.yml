@@ -30,24 +30,44 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Run Unit Tests
-        run: dotnet test ./UL.AuditPipeline.sln --configuration Release
+        run: dotnet test --configuration Release
+
+      - name: Build and Publish API
+        run: dotnet publish ./UL.AuditPipeline.Api/UL.AuditPipeline.Api.csproj -c Release -o ./publish-api
     
-      - name: Create Resource Group
+      # DEV
+      - name: Create DEV Resource Group
         run: az group create --name rg-ulauditpipeline-dev --location southeastasia
 
-      - name: Deploy Bicep File
+      - name: Deploy DEV Infrastructure
         uses: azure/arm-deploy@v2
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           resourceGroupName: rg-ulauditpipeline-dev
           template: ./Infrastructure/main.bicep
           parameters: location=southeastasia environmentName=dev appName=ulauditpipeline
-      
-      - name: Build and Publish API
-        run: dotnet publish ./UL.AuditPipeline.Api/UL.AuditPipeline.Api.csproj -c Release -o ./publish-api
 
-      - name: Deploy API to Azure App Service
+      - name: Deploy API to DEV App Service
         uses: azure/webapps-deploy@v3
         with:
           app-name: ulauditpipeline-api-dev
+          package: ./publish-api
+      
+      
+      # TEST
+      - name: Create TEST Resource Group
+        run: az group create --name rg-ulauditpipeline-test --location southeastasia
+
+      - name: Deploy TEST Infrastructure
+        uses: azure/arm-deploy@v2
+        with:
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          resourceGroupName: rg-ulauditpipeline-test
+          template: ./Infrastructure/main.bicep
+          parameters: location=southeastasia environmentName=test appName=ulauditpipeline
+
+      - name: Deploy API to TEST App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ulauditpipeline-api-test
           package: ./publish-api
